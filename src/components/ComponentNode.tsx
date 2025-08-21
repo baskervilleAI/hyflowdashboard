@@ -1,143 +1,244 @@
-import React, { useMemo, useState } from "react";
-import { Handle, Position, NodeProps } from "reactflow";
-import type { ComponentNodeData, HandleInfo } from "../types";
+import React, {
+  useState,
+  useMemo,
+  useRef,
+  useEffect,
+  useCallback,
+} from 'react';
 import {
-  DEFAULT_HANDLE_COLOR,
-  HANDLE_PADDING,
-  DEFAULT_NODE_TITLE,
-} from "../constants";
+  Position,
+  NodeProps,
+  NodeToolbar,
+  useReactFlow,
+  useUpdateNodeInternals,
+} from 'reactflow';
+import UnitWithExponent from './UnitWithExponent';
+import styles from './componentNode.module.scss';
+import EyeIcon from './EyeIcon';
+import CarrierHandle from './CarrierHandle';
+import { ComponentNodeData, HandleInfo } from '../types';
+import { DIMMED_OPACITY, FULL_OPACITY } from '../helpers/net.helper';
 
-// Convert angle (deg) to normalized [top,left] within a rectangle (0..1 range)
-function angleToTopLeft(angle: number): { top: string; left: string } {
-  // Place handle around a circle mapped into the node's bounding box
-  const rad = (angle * Math.PI) / 180;
-  // Range [-1,1]
-  const x = Math.cos(rad);
-  const y = Math.sin(rad);
-  // Map to [0,1] and clamp a bit to avoid clipping
-  const pad = HANDLE_PADDING;
-  const left = ((x + 1) / 2) * (1 - 2 * pad) + pad;
-  const top = ((y + 1) / 2) * (1 - 2 * pad) + pad;
-  return {
-    top: `${(top * 100).toFixed(2)}%`,
-    left: `${(left * 100).toFixed(2)}%`,
-  };
-}
+type ComponentNodeProps = NodeProps<ComponentNodeData>;
 
-function getDefaultAngles(n: number, side: "left" | "right"): number[] {
-  const start = side === "left" ? 180 : 0;
-  const span = 160; // fan
-  const offset = (180 - span) / 2;
-  const res: number[] = [];
-  for (let i = 0; i < n; i++) {
-    const frac = n > 1 ? i / (n - 1) : 0.5;
-    const a = start + (side === "left" ? 1 : 1) * (frac * span - offset);
-    res.push(a);
-  }
-  return res;
-}
-
-export default function ComponentNode({
+const ComponentNode: React.FC<ComponentNodeProps> = ({
   data,
   selected,
-}: NodeProps<ComponentNodeData>) {
-  const [hover, setHover] = useState(false);
+  dragging,
+  id: nodeId,
+}) => {
+  const {
+    name,
+    _originalName,
+    imageSrc,
+    inputHandles = [],
+    outputHandles = [],
+    input_info,
+    table_values,
+    pin_info = [],
+    view,
+    isNodeToolbar,
+    fadde,
+    onHandleUpdate,
+    onHandleDragStop,
+  } = data;
 
-  const inputs: HandleInfo[] = useMemo(() => {
-    const arr = data.inputHandles ?? [{ id: "in-1" }];
-    const missing = arr.filter((h) => h.angle == null);
-    if (missing.length) {
-      const angles = getDefaultAngles(arr.length, "left");
-      return arr.map((h, i) => ({ ...h, angle: h.angle ?? angles[i] }));
-    }
-    return arr;
-  }, [data.inputHandles]);
+  const { setNodes, getNodes } = useReactFlow();
+  const updateNodeInternals = useUpdateNodeInternals();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showToolbar, setShowToolbar] = useState(false);
 
-  const outputs: HandleInfo[] = useMemo(() => {
-    const arr = data.outputHandles ?? [{ id: "out-1" }];
-    const missing = arr.filter((h) => h.angle == null);
-    if (missing.length) {
-      const angles = getDefaultAngles(arr.length, "right");
-      return arr.map((h, i) => ({ ...h, angle: h.angle ?? angles[i] }));
-    }
-    return arr;
-  }, [data.outputHandles]);
+  const getDisplayValues = useMemo(() => {
+    return view === 'results' ? table_values || {} : input_info || {};
+  }, [view, table_values, input_info]);
+
+  const [pinnedAttributes, setPinnedAttributes] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const initialPins: Record<string, boolean> = {};
+    Object.keys(getDisplayValues).forEach((key) => {
+      initialPins[key] = pin_info.includes(key);
+    });
+    setPinnedAttributes(initialPins);
+  }, [pin_info, getDisplayValues]);
+
+  const togglePinAttribute = useCallback(
+    (key: string) => {
+      setPinnedAttributes((prev) => {
+        const newState = { ...prev, [key]: !prev[key] };
+        const newPinList = Object.entries(newState)
+          .filter(([, pinned]) => pinned)
+          .map(([k]) => k);
+
+        const updatedNodes = getNodes().map((n) => {
+          if (n.id === nodeId) {
+            return {
+              ...n,
+              data: {
+                ...n.data,
+                pin_info: newPinList,
+              },
+            };
+          }
+          return n;
+        });
+
+        setNodes(updatedNodes);
+        return newState;
+      });
+    },
+    [getNodes, setNodes, nodeId],
+  );
+
+  const handleUpdateFromChild = useCallback(
+    (handleId: string, newAngle: number) => {
+      onHandleUpdate?.(nodeId, handleId, newAngle);
+      updateNodeInternals(nodeId);
+    },
+    [nodeId, onHandleUpdate, updateNodeInternals],
+  );
+
+  const handleDragStopFromChild = useCallback(
+    (handleId: string, finalAngle: number) => {
+      onHandleDragStop?.(nodeId, handleId, finalAngle);
+    },
+    [nodeId, onHandleDragStop],
+  );
+
+  const allHandlesToRender = useMemo(() => {
+    const processHandles = (handles: HandleInfo[], type: 'source' | 'target') => {
+      return handles.map((h) => ({
+        ...h,
+        type,
+        angle: h.angle!,
+        color: h.color || '#555',
+      }));
+    };
+    return [
+      ...processHandles(inputHandles, 'target'),
+      ...processHandles(outputHandles, 'source'),
+    ];
+  }, [inputHandles, outputHandles]);
+
+  const hasValues = Object.keys(getDisplayValues).length > 0;
+
+  const handleMouseEnter = () => {
+    setShowToolbar(true);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  };
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setShowToolbar(false);
+      timeoutRef.current = null;
+    }, 50);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   return (
     <div
-      className={`component-node ${selected ? "selected" : ""}`}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+      className={styles['component-node']}
+      style={{
+        opacity:
+          fadde && !selected && view === 'results'
+            ? DIMMED_OPACITY
+            : FULL_OPACITY,
+      }}
     >
-      {data.image && (
-        <img
-          className="node-thumb"
-          src={data.image}
-          alt={data.title ?? DEFAULT_NODE_TITLE}
-        />
-      )}
-      <div className="node-title">{data.title ?? DEFAULT_NODE_TITLE}</div>
-
-      {/* Hover card with attributes */}
-      {hover && data.attrs && Object.keys(data.attrs).length > 0 && (
-        <div className="hover-card">
-          <table>
-            <thead>
-              <tr>
-                <th colSpan={2}>Attributes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(data.attrs).map(([k, v]) => (
-                <tr key={k}>
-                  <td>{k}</td>
-                  <td>{v}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div
+        className={`${styles['node-visual-wrapper']} ${selected ? styles['selected'] : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        data-visual-wrapper="true"
+        title={view === 'edit' ? 'Doble click to edit data' : undefined}
+      >
+        <div className={styles['component-background']}>
+          {imageSrc && (
+            <img src={imageSrc} alt={name} className={styles['component-image']} />
+          )}
         </div>
-      )}
 
-      {/* Render input handles */}
-      {inputs.map((h) => {
-        const a = h.angle ?? 180;
-        const pos = angleToTopLeft(a);
-        return (
-          <Handle
-            key={h.id}
-            id={h.id}
-            type="target"
-            position={Position.Left}
-            style={{
-              top: pos.top,
-              left: pos.left,
-              borderColor: h.color ?? DEFAULT_HANDLE_COLOR,
-            }}
-            isConnectable
+        {allHandlesToRender.map((handle) => (
+          <CarrierHandle
+            key={handle.id}
+            id={handle.id}
+            type={handle.type as 'source' | 'target'}
+            angle={handle.angle}
+            onUpdate={handleUpdateFromChild}
+            onDragStop={handleDragStopFromChild}
+            color={handle.color}
+            opacity={handle.opacity}
           />
-        );
-      })}
+        ))}
 
-      {/* Render output handles */}
-      {outputs.map((h) => {
-        const a = h.angle ?? 0;
-        const pos = angleToTopLeft(a);
-        return (
-          <Handle
-            key={h.id}
-            id={h.id}
-            type="source"
+        {hasValues && (
+          <NodeToolbar
             position={Position.Right}
-            style={{
-              top: pos.top,
-              left: pos.left,
-              borderColor: h.color ?? DEFAULT_HANDLE_COLOR,
-            }}
-            isConnectable
-          />
-        );
-      })}
+            className={`${styles.nodeToolbar} nowheel`}
+            isVisible={showToolbar && isNodeToolbar && !dragging}
+          >
+            <div className={styles.toolbarContent}>
+              <table>
+                <thead>
+                  <tr className={styles.originalNameRow}>
+                    <th colSpan={3}>{_originalName}</th>
+                  </tr>
+                  <tr>
+                    <th>Attribute</th>
+                    <th>Value</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(getDisplayValues).map(([key, val]) => (
+                    <tr key={key}>
+                      <td>{key}</td>
+                      <td>
+                        <UnitWithExponent unit={String(val)} />
+                      </td>
+                      <td className={styles.pinCell}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            togglePinAttribute(key);
+                          }}
+                          className={`${styles.pinButton} ${
+                            pinnedAttributes[key] ? styles.pinned : ''
+                          }`}
+                          title={pinnedAttributes[key] ? 'Unpin' : 'Pin'}
+                        >
+                          <EyeIcon isPinned={!!pinnedAttributes[key]} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </NodeToolbar>
+        )}
+      </div>
+
+      <div className={styles['node-info-container']}>
+        <div className={styles['component-text']}>{name}</div>
+        <div className={styles.pinnedAttributesContainer}>
+          {Object.entries(pinnedAttributes)
+            .filter(([k, pinned]) => pinned && getDisplayValues[k] !== undefined)
+            .map(([k]) => (
+              <div key={`pinned-${k}`} className={styles.pinnedAttribute}>
+                <span className={styles.pinnedKey}>{k}: </span>
+                <UnitWithExponent unit={String(getDisplayValues[k])} />
+              </div>
+            ))}
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default ComponentNode;
+

@@ -16,6 +16,9 @@ export const POLYGON_VERTICES = [
 
 export const EDGE_PADDING_RATIO = 0.1;
 
+export const DIMMED_OPACITY = 0.4;
+export const FULL_OPACITY = 1;
+
 export interface CarrierHandleProps {
   id: string;
   type: "source" | "target";
