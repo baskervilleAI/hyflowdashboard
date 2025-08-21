@@ -3,12 +3,15 @@ import { Position } from "reactflow";
 // Basic polygon geometry helpers for handle positioning
 export const NODE_CENTER = { x: 0, y: 0 };
 
-// Default square polygon around the node centre
+// Hexagonal polygon around the node centre
+// Oriented with a point at the top and bottom
 export const POLYGON_VERTICES = [
-  { x: -25, y: -25 },
-  { x: 25, y: -25 },
-  { x: 25, y: 25 },
-  { x: -25, y: 25 },
+  { x: 0, y: -25 },
+  { x: 21.65, y: -12.5 },
+  { x: 21.65, y: 12.5 },
+  { x: 0, y: 25 },
+  { x: -21.65, y: 12.5 },
+  { x: -21.65, y: -12.5 },
 ];
 
 export const EDGE_PADDING_RATIO = 0.1;
