@@ -9,8 +9,8 @@ import { Handle } from "reactflow";
 
 import {
   CarrierHandleProps,
-  angleToPointOnPolygon,
-  projectToAngleOnPolygon,
+  angleToPointOnShape,
+  projectToAngleOnShape,
   angleToLogicalPosition,
 } from "../helpers/net.helper";
 
@@ -18,6 +18,7 @@ const CarrierHandle: React.FC<CarrierHandleProps> = ({
   id,
   type,
   angle,
+  shape,
   onUpdate,
   onDragStop,
   color = "#555",
@@ -44,7 +45,10 @@ const CarrierHandle: React.FC<CarrierHandleProps> = ({
     stateRef.current.lastAngle = angle;
   }, [angle]);
 
-  const position = useMemo(() => angleToPointOnPolygon(angle), [angle]);
+  const position = useMemo(
+    () => angleToPointOnShape(angle, shape),
+    [angle, shape],
+  );
   const logicalPosition = useMemo(() => angleToLogicalPosition(angle), [angle]);
 
   const handleMouseUp = useCallback(() => {
@@ -62,12 +66,12 @@ const CarrierHandle: React.FC<CarrierHandleProps> = ({
       const nodeRect = nodeRef.current.getBoundingClientRect();
       const localX = event.clientX - nodeRect.left;
       const localY = event.clientY - nodeRect.top;
-      const newAngle = projectToAngleOnPolygon(localX, localY);
+      const newAngle = projectToAngleOnShape(localX, localY, shape);
 
       stateRef.current.lastAngle = newAngle;
       stateRef.current.onUpdate(id, newAngle);
     },
-    [id],
+    [id, shape],
   );
 
   const handleMouseDown = useCallback(

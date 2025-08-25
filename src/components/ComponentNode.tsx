@@ -4,20 +4,24 @@ import React, {
   useRef,
   useEffect,
   useCallback,
-} from 'react';
+} from "react";
 import {
   Position,
   NodeProps,
   NodeToolbar,
   useReactFlow,
   useUpdateNodeInternals,
-} from 'reactflow';
-import UnitWithExponent from './UnitWithExponent';
-import styles from './componentNode.module.scss';
-import EyeIcon from './EyeIcon';
-import CarrierHandle from './CarrierHandle';
-import { ComponentNodeData, HandleInfo } from '../types';
-import { DIMMED_OPACITY, FULL_OPACITY } from '../helpers/net.helper';
+} from "reactflow";
+import UnitWithExponent from "./UnitWithExponent";
+import styles from "./componentNode.module.scss";
+import EyeIcon from "./EyeIcon";
+import CarrierHandle from "./CarrierHandle";
+import { ComponentNodeData, HandleInfo, NodeShape } from "../types";
+import {
+  DIMMED_OPACITY,
+  FULL_OPACITY,
+  clipPathForShape,
+} from "../helpers/net.helper";
 
 type ComponentNodeProps = NodeProps<ComponentNodeData>;
 
@@ -39,6 +43,7 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
     view,
     isNodeToolbar,
     fadde,
+    shape = { type: "polygon", sides: 6 } as NodeShape,
     onHandleUpdate,
     onHandleDragStop,
   } = data;
@@ -49,10 +54,12 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
   const [showToolbar, setShowToolbar] = useState(false);
 
   const getDisplayValues = useMemo(() => {
-    return view === 'results' ? table_values || {} : input_info || {};
+    return view === "results" ? table_values || {} : input_info || {};
   }, [view, table_values, input_info]);
 
-  const [pinnedAttributes, setPinnedAttributes] = useState<Record<string, boolean>>({});
+  const [pinnedAttributes, setPinnedAttributes] = useState<
+    Record<string, boolean>
+  >({});
 
   useEffect(() => {
     const initialPins: Record<string, boolean> = {};
@@ -105,18 +112,23 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
     [nodeId, onHandleDragStop],
   );
 
+  const clipPath = useMemo(() => clipPathForShape(shape), [shape]);
+
   const allHandlesToRender = useMemo(() => {
-    const processHandles = (handles: HandleInfo[], type: 'source' | 'target') => {
+    const processHandles = (
+      handles: HandleInfo[],
+      type: "source" | "target",
+    ) => {
       return handles.map((h) => ({
         ...h,
         type,
         angle: h.angle!,
-        color: h.color || '#555',
+        color: h.color || "#555",
       }));
     };
     return [
-      ...processHandles(inputHandles, 'target'),
-      ...processHandles(outputHandles, 'source'),
+      ...processHandles(inputHandles, "target"),
+      ...processHandles(outputHandles, "source"),
     ];
   }, [inputHandles, outputHandles]);
 
@@ -141,24 +153,28 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
 
   return (
     <div
-      className={styles['component-node']}
+      className={styles["component-node"]}
       style={{
         opacity:
-          fadde && !selected && view === 'results'
+          fadde && !selected && view === "results"
             ? DIMMED_OPACITY
             : FULL_OPACITY,
       }}
     >
       <div
-        className={`${styles['node-visual-wrapper']} ${selected ? styles['selected'] : ''}`}
+        className={`${styles["node-visual-wrapper"]} ${selected ? styles["selected"] : ""}`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         data-visual-wrapper="true"
-        title={view === 'edit' ? 'Doble click to edit data' : undefined}
+        title={view === "edit" ? "Doble click to edit data" : undefined}
       >
-        <div className={styles['component-background']}>
+        <div className={styles["component-background"]} style={{ clipPath }}>
           {imageSrc && (
-            <img src={imageSrc} alt={name} className={styles['component-image']} />
+            <img
+              src={imageSrc}
+              alt={name}
+              className={styles["component-image"]}
+            />
           )}
         </div>
 
@@ -166,12 +182,13 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
           <CarrierHandle
             key={handle.id}
             id={handle.id}
-            type={handle.type as 'source' | 'target'}
+            type={handle.type as "source" | "target"}
             angle={handle.angle}
             onUpdate={handleUpdateFromChild}
             onDragStop={handleDragStopFromChild}
             color={handle.color}
             opacity={handle.opacity}
+            shape={shape}
           />
         ))}
 
@@ -207,9 +224,9 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
                             togglePinAttribute(key);
                           }}
                           className={`${styles.pinButton} ${
-                            pinnedAttributes[key] ? styles.pinned : ''
+                            pinnedAttributes[key] ? styles.pinned : ""
                           }`}
-                          title={pinnedAttributes[key] ? 'Unpin' : 'Pin'}
+                          title={pinnedAttributes[key] ? "Unpin" : "Pin"}
                         >
                           <EyeIcon isPinned={!!pinnedAttributes[key]} />
                         </button>
@@ -223,11 +240,13 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
         )}
       </div>
 
-      <div className={styles['node-info-container']}>
-        <div className={styles['component-text']}>{name}</div>
+      <div className={styles["node-info-container"]}>
+        <div className={styles["component-text"]}>{name}</div>
         <div className={styles.pinnedAttributesContainer}>
           {Object.entries(pinnedAttributes)
-            .filter(([k, pinned]) => pinned && getDisplayValues[k] !== undefined)
+            .filter(
+              ([k, pinned]) => pinned && getDisplayValues[k] !== undefined,
+            )
             .map(([k]) => (
               <div key={`pinned-${k}`} className={styles.pinnedAttribute}>
                 <span className={styles.pinnedKey}>{k}: </span>
@@ -241,4 +260,3 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
 };
 
 export default ComponentNode;
-
