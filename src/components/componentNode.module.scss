@@ -44,7 +44,6 @@ $shadowColor: rgba(0, 0, 0, 0.15);
   left: 0;
   background: transparent;
   background-color: white;
-  clip-path: polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
   overflow: hidden;
   z-index: 0;
 }
@@ -77,7 +76,7 @@ $shadowColor: rgba(0, 0, 0, 0.15);
   color: #444;
   text-align: center;
   width: 150px;
-  line-height: 1.0;
+  line-height: 1;
   box-sizing: border-box;
   margin-top: 2px;
   flex-shrink: 0;
@@ -221,4 +220,3 @@ $shadowColor: rgba(0, 0, 0, 0.15);
 .pinnedAttribute:hover .pinnedKey {
   display: inline;
 }
-
