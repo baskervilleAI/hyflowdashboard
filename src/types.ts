@@ -7,6 +7,7 @@ export type HandleInfo = {
   angle?: number // degrees, clockwise from +X (right)
   label?: string
   color?: string
+  opacity?: number
 }
 
 export type ComponentNodeData = {

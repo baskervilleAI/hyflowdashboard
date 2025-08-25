@@ -31,6 +31,7 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
     name,
     _originalName,
     imageSrc,
+    image,
     inputHandles = [],
     outputHandles = [],
     input_info,
@@ -47,6 +48,8 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
   const updateNodeInternals = useUpdateNodeInternals();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showToolbar, setShowToolbar] = useState(false);
+
+  const displayImageSrc = imageSrc || image;
 
   const getDisplayValues = useMemo(() => {
     return view === 'results' ? table_values || {} : input_info || {};
@@ -157,8 +160,8 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
         title={view === 'edit' ? 'Doble click to edit data' : undefined}
       >
         <div className={styles['component-background']}>
-          {imageSrc && (
-            <img src={imageSrc} alt={name} className={styles['component-image']} />
+          {displayImageSrc && (
+            <img src={displayImageSrc} alt={name} className={styles['component-image']} />
           )}
         </div>
 

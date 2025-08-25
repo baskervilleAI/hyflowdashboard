@@ -16,6 +16,7 @@ import 'reactflow/dist/style.css'
 import ComponentNode from './components/ComponentNode'
 import type { ComponentNodeData, Attrs, SavedState } from './types'
 import { saveState, loadState, clearState } from './storage'
+import { MAX_IMAGE_DIMENSION, IMAGE_QUALITY, UNSPLASH_ACCESS_KEY, UNSPLASH_API_URL } from './constants'
 
 const nodeTypes = { component: ComponentNode }
 
@@ -90,19 +91,82 @@ export default function App() {
     }))
   }
 
-  const addImageNode = (file: File) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
-      const id = `IMG${Date.now().toString(36)}`
-      setNodes(nds => nds.concat({
+  const addImageUrlNode = (url: string, title: string) => {
+    const id = `IMG${Date.now().toString(36)}`
+    setNodes(nds =>
+      nds.concat({
         id,
         type: 'component',
         position: { x: 260 + Math.random() * 80, y: 160 + Math.random() * 140 },
-        data: { title: file.name, image: dataUrl, inputHandles: [{ id: id + '-in' }], outputHandles: [{ id: id + '-out' }], attrs: { file: file.name } }
-      }))
+        data: {
+          title,
+          imageSrc: url,
+          inputHandles: [{ id: id + '-in' }],
+          outputHandles: [{ id: id + '-out' }],
+          attrs: { src: url }
+        }
+      })
+    )
+  }
+
+  const addImageNode = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const img = new Image()
+      img.onload = () => {
+        let { width, height } = img
+        if (width > height) {
+          if (width > MAX_IMAGE_DIMENSION) {
+            height = (height * MAX_IMAGE_DIMENSION) / width
+            width = MAX_IMAGE_DIMENSION
+          }
+        } else if (height > MAX_IMAGE_DIMENSION) {
+          width = (width * MAX_IMAGE_DIMENSION) / height
+          height = MAX_IMAGE_DIMENSION
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height)
+          const dataUrl = canvas.toDataURL('image/jpeg', IMAGE_QUALITY)
+          addImageUrlNode(dataUrl, file.name)
+        }
+      }
+      img.src = reader.result as string
     }
     reader.readAsDataURL(file)
+  }
+
+  const searchImageNode = async () => {
+    const query = prompt('Search images for:')
+    if (!query) return
+    if (!UNSPLASH_ACCESS_KEY) {
+      alert('Missing Unsplash access key')
+      return
+    }
+    try {
+      const resp = await fetch(`${UNSPLASH_API_URL}?query=${encodeURIComponent(query)}&per_page=5&client_id=${UNSPLASH_ACCESS_KEY}`)
+      const json = await resp.json()
+      if (!json.results || json.results.length === 0) {
+        alert('No results')
+        return
+      }
+      const choice = prompt(
+        json.results
+          .map((r: any, i: number) => `${i + 1}: ${r.description || r.alt_description || 'Image ' + (i + 1)}`)
+          .join('\n') +
+          '\nEnter image number to add:'
+      )
+      const idx = Number(choice) - 1
+      if (idx >= 0 && idx < json.results.length) {
+        const img = json.results[idx]
+        addImageUrlNode(img.urls.small, img.description || img.alt_description || query)
+      }
+    } catch (e) {
+      alert('Image search failed')
+    }
   }
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -192,6 +256,7 @@ export default function App() {
           <button onClick={() => fileInputRef.current?.click()}>+ Image Node</button>
           <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) addImageNode(f); e.currentTarget.value = '' }} />
+          <button onClick={searchImageNode}>Search Image</button>
           <button onClick={saveJSON}>Export JSON</button>
           <button onClick={() => importRef.current?.click()}>Import JSON</button>
           <input ref={importRef} type="file" accept="application/json" style={{ display: 'none' }}
