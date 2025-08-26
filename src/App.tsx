@@ -22,6 +22,7 @@ import "reactflow/dist/style.css";
 import ComponentNode from "./components/ComponentNode";
 import type { ComponentNodeData, Attrs, SavedState } from "./types";
 import { saveState, loadState, clearState } from "./storage";
+import { fetchServerInfo } from "./api";
 
 const nodeTypes = { component: ComponentNode };
 
@@ -71,6 +72,7 @@ export default function App() {
   const [selected, setSelected] = useState<Selected>({ nodes: [], edges: [] });
   const [attrKey, setAttrKey] = useState("");
   const [attrValue, setAttrValue] = useState("");
+  const [serverInfo, setServerInfo] = useState<string>("");
 
   // Load state on first mount
   useEffect(() => {
@@ -86,6 +88,13 @@ export default function App() {
   useEffect(() => {
     saveState({ nodes, edges });
   }, [nodes, edges]);
+
+  // Fetch server info once on load
+  useEffect(() => {
+    fetchServerInfo()
+      .then((data) => setServerInfo(JSON.stringify(data)))
+      .catch(() => setServerInfo("Unavailable"));
+  }, []);
 
   const onConnect = useCallback(
     (c: Connection) => setEdges((eds) => addEdge(c, eds)),
@@ -239,6 +248,9 @@ export default function App() {
       <header className="topbar">
         <div className="brand">HyFlowDashboard</div>
         <div className="actions">
+          <span className="server-info">
+            {serverInfo ? `Server: ${serverInfo}` : "Server: ..."}
+          </span>
           <button onClick={addNode}>+ Node</button>
           <button onClick={() => fileInputRef.current?.click()}>
             + Image Node
