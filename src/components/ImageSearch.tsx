@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { searchImages, PixabayImage } from "../api";
+import { searchImages, ImageResult } from "../api";
 
 type ImageSearchProps = {
   onSelect: (url: string, label: string) => void;
@@ -7,7 +7,7 @@ type ImageSearchProps = {
 
 const ImageSearch: React.FC<ImageSearchProps> = ({ onSelect }) => {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PixabayImage[]>([]);
+  const [results, setResults] = useState<ImageResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

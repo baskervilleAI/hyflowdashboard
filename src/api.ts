@@ -8,29 +8,27 @@ export async function fetchServerInfo(): Promise<any> {
   return res.json();
 }
 
-export interface PixabayImage {
-  id: number;
+export interface ImageResult {
+  id: string;
   previewURL: string;
   largeImageURL: string;
   tags: string;
 }
 
-export async function searchImages(query: string): Promise<PixabayImage[]> {
-  const key =
-    import.meta.env.VITE_PIXABAY_KEY ||
-    "27844507-0c1f742675011cd3c5112d94ed"; // demo key with limited quota
-  const url = `https://pixabay.com/api/?key=${key}&q=${encodeURIComponent(
-    query,
-  )}&image_type=illustration&per_page=12&lang=en&category=computer`; // filter for tech icons
+// Searches public Flickr images by tag. This endpoint is free and requires no API key.
+export async function searchImages(query: string): Promise<ImageResult[]> {
+  const url =
+    "https://www.flickr.com/services/feeds/photos_public.gne" +
+    `?format=json&nojsoncallback=1&tags=${encodeURIComponent(query)}`;
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Failed to search images: ${res.status}`);
   }
   const data = await res.json();
-  return data.hits.map((hit: any) => ({
-    id: hit.id,
-    previewURL: hit.previewURL,
-    largeImageURL: hit.largeImageURL,
-    tags: hit.tags,
+  return data.items.map((item: any, idx: number) => ({
+    id: item.link || String(idx),
+    previewURL: item.media.m,
+    largeImageURL: item.media.m.replace("_m.", "_b."),
+    tags: item.title,
   }));
 }
