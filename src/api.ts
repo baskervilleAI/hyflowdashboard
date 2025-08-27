@@ -7,3 +7,31 @@ export async function fetchServerInfo(): Promise<any> {
   }
   return res.json();
 }
+
+export interface PixabayImage {
+  id: number;
+  previewURL: string;
+  largeImageURL: string;
+  tags: string;
+}
+
+export async function searchImages(query: string): Promise<PixabayImage[]> {
+  const key = import.meta.env.VITE_PIXABAY_KEY;
+  if (!key) {
+    throw new Error("Missing Pixabay API key");
+  }
+  const url = `https://pixabay.com/api/?key=${key}&q=${encodeURIComponent(
+    query,
+  )}&image_type=illustration&per_page=12&lang=en&category=computer`; // filter for tech icons
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to search images: ${res.status}`);
+  }
+  const data = await res.json();
+  return data.hits.map((hit: any) => ({
+    id: hit.id,
+    previewURL: hit.previewURL,
+    largeImageURL: hit.largeImageURL,
+    tags: hit.tags,
+  }));
+}

@@ -34,6 +34,7 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
   const {
     name,
     _originalName,
+    image,
     imageSrc,
     inputHandles = [],
     outputHandles = [],
@@ -173,9 +174,9 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
         title={view === "edit" ? "Doble click to edit data" : undefined}
       >
         <div className={styles["component-background"]} style={{ clipPath }}>
-          {imageSrc && (
+          {(imageSrc || image) && (
             <img
-              src={imageSrc}
+              src={imageSrc || image}
               alt={name}
               className={styles["component-image"]}
             />

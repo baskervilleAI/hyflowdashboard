@@ -25,6 +25,7 @@ body {
   display: grid;
   grid-template-rows: 56px 1fr;
   height: 100%;
+  position: relative;
 }
 .topbar {
   display: flex;
@@ -338,4 +339,39 @@ body {
 
 .toolbarContent table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.image-search-panel {
+  position: absolute;
+  top: 56px;
+  left: 0;
+  right: 0;
+  background: #0b1220;
+  border-bottom: 1px solid #1f2937;
+  padding: 8px;
+  z-index: 20;
+}
+
+.image-search-panel .row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.image-results {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.image-results img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border: 1px solid #374151;
+  border-radius: 4px;
+  background: #1f2937;
+  cursor: pointer;
 }
