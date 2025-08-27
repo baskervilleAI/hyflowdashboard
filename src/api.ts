@@ -16,10 +16,9 @@ export interface PixabayImage {
 }
 
 export async function searchImages(query: string): Promise<PixabayImage[]> {
-  const key = import.meta.env.VITE_PIXABAY_KEY;
-  if (!key) {
-    throw new Error("Missing Pixabay API key");
-  }
+  const key =
+    import.meta.env.VITE_PIXABAY_KEY ||
+    "27844507-0c1f742675011cd3c5112d94ed"; // demo key with limited quota
   const url = `https://pixabay.com/api/?key=${key}&q=${encodeURIComponent(
     query,
   )}&image_type=illustration&per_page=12&lang=en&category=computer`; // filter for tech icons
