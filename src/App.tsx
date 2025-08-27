@@ -21,6 +21,7 @@ import "reactflow/dist/style.css";
 
 import ComponentNode from "./components/ComponentNode";
 import EdgeConfigurator from "./components/EdgeConfigurator";
+import ImageSearch from "./components/ImageSearch";
 import type { ComponentNodeData, Attrs, SavedState } from "./types";
 import { saveState, loadState, clearState } from "./storage";
 import { fetchServerInfo } from "./api";
@@ -74,6 +75,7 @@ export default function App() {
   const [attrKey, setAttrKey] = useState("");
   const [attrValue, setAttrValue] = useState("");
   const [serverInfo, setServerInfo] = useState<string>("");
+  const [showImageSearch, setShowImageSearch] = useState(false);
 
   // Load state on first mount
   useEffect(() => {
@@ -135,7 +137,7 @@ export default function App() {
           },
           data: {
             title: file.name,
-            image: dataUrl,
+            imageSrc: dataUrl,
             shape: { type: "polygon", sides: 6 },
             inputHandles: [{ id: id + "-in" }],
             outputHandles: [{ id: id + "-out" }],
@@ -145,6 +147,28 @@ export default function App() {
       );
     };
     reader.readAsDataURL(file);
+  };
+
+  const addImageNodeFromUrl = (src: string, label: string) => {
+    const id = `IMG${Date.now().toString(36)}`;
+    setNodes((nds) =>
+      nds.concat({
+        id,
+        type: "component",
+        position: {
+          x: 260 + Math.random() * 80,
+          y: 160 + Math.random() * 140,
+        },
+        data: {
+          title: label,
+          imageSrc: src,
+          shape: { type: "polygon", sides: 6 },
+          inputHandles: [{ id: id + "-in" }],
+          outputHandles: [{ id: id + "-out" }],
+          attrs: {},
+        },
+      }),
+    );
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -258,6 +282,9 @@ export default function App() {
           <button onClick={() => fileInputRef.current?.click()}>
             + Image Node
           </button>
+          <button onClick={() => setShowImageSearch((s) => !s)}>
+            Search Image
+          </button>
           <input
             ref={fileInputRef}
             type="file"
@@ -287,6 +314,15 @@ export default function App() {
           <button onClick={clearAll}>Clear</button>
         </div>
       </header>
+
+      {showImageSearch && (
+        <ImageSearch
+          onSelect={(url, label) => {
+            addImageNodeFromUrl(url, label);
+            setShowImageSearch(false);
+          }}
+        />
+      )}
 
       <div className="content">
         <div className="canvas">
