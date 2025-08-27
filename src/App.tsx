@@ -111,6 +111,7 @@ export default function App() {
         position: { x: 200 + Math.random() * 80, y: 120 + Math.random() * 140 },
         data: {
           title: "Node",
+          shape: { type: "polygon", sides: 6 },
           inputHandles: [{ id: id + "-in" }],
           outputHandles: [{ id: id + "-out" }],
           attrs: {},
@@ -135,6 +136,7 @@ export default function App() {
           data: {
             title: file.name,
             image: dataUrl,
+            shape: { type: "polygon", sides: 6 },
             inputHandles: [{ id: id + "-in" }],
             outputHandles: [{ id: id + "-out" }],
             attrs: { file: file.name },
@@ -327,6 +329,68 @@ export default function App() {
                     );
                   }}
                 />
+              </div>
+
+              <div className="field">
+                <label>Shape</label>
+                <div className="row">
+                  <select
+                    value={selectedNode.data?.shape?.type || "polygon"}
+                    onChange={(e) => {
+                      const type = e.target.value as "circle" | "polygon";
+                      setNodes((nds) =>
+                        nds.map((n) => {
+                          if (n.id !== selectedNode.id) return n;
+                          const shape =
+                            type === "circle"
+                              ? { type: "circle" }
+                              : {
+                                  type: "polygon",
+                                  sides:
+                                    n.data?.shape?.type === "polygon"
+                                      ? n.data.shape.sides
+                                      : 6,
+                                };
+                          return { ...n, data: { ...(n.data || {}), shape } };
+                        }),
+                      );
+                    }}
+                  >
+                    <option value="circle">Circle</option>
+                    <option value="polygon">Polygon</option>
+                  </select>
+                  {(selectedNode.data?.shape?.type || "polygon") ===
+                    "polygon" && (
+                    <input
+                      type="number"
+                      min={3}
+                      value={
+                        selectedNode.data?.shape?.type === "polygon"
+                          ? selectedNode.data.shape.sides
+                          : 6
+                      }
+                      onChange={(e) => {
+                        const sides = Math.max(
+                          3,
+                          parseInt(e.target.value) || 3,
+                        );
+                        setNodes((nds) =>
+                          nds.map((n) =>
+                            n.id === selectedNode.id
+                              ? {
+                                  ...n,
+                                  data: {
+                                    ...(n.data || {}),
+                                    shape: { type: "polygon", sides },
+                                  },
+                                }
+                              : n,
+                          ),
+                        );
+                      }}
+                    />
+                  )}
+                </div>
               </div>
 
               <div className="field">

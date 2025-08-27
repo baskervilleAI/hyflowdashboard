@@ -114,6 +114,10 @@ const ComponentNode: React.FC<ComponentNodeProps> = ({
 
   const clipPath = useMemo(() => clipPathForShape(shape), [shape]);
 
+  useEffect(() => {
+    updateNodeInternals(nodeId);
+  }, [shape, nodeId, updateNodeInternals]);
+
   const allHandlesToRender = useMemo(() => {
     const processHandles = (
       handles: HandleInfo[],
