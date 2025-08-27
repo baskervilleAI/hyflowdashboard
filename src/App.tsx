@@ -20,6 +20,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 
 import ComponentNode from "./components/ComponentNode";
+import EdgeConfigurator from "./components/EdgeConfigurator";
 import type { ComponentNodeData, Attrs, SavedState } from "./types";
 import { saveState, loadState, clearState } from "./storage";
 import { fetchServerInfo } from "./api";
@@ -305,6 +306,10 @@ export default function App() {
 
         <aside className="inspector">
           <h3>Inspector</h3>
+          <EdgeConfigurator
+            nodes={nodes}
+            onAddEdge={(edge) => setEdges((eds) => eds.concat(edge))}
+          />
           {selectedNode ? (
             <>
               <div className="field">
