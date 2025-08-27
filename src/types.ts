@@ -36,3 +36,10 @@ export type SavedState = {
   nodes: Node<ComponentNodeData>[];
   edges: Edge[];
 };
+
+export type EdgeType =
+  | "smoothstep"
+  | "default"
+  | "straight"
+  | "step"
+  | "simplebezier";
