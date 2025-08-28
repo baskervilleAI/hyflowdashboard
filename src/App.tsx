@@ -22,7 +22,7 @@ import "reactflow/dist/style.css";
 import ComponentNode from "./components/ComponentNode";
 import EdgeConfigurator from "./components/EdgeConfigurator";
 import ImageSearch from "./components/ImageSearch";
-import type { ComponentNodeData, Attrs, SavedState } from "./types";
+import type { ComponentNodeData, Attrs, SavedState, NodeShape } from "./types";
 import { saveState, loadState, clearState } from "./storage";
 import { fetchServerInfo } from "./api";
 
@@ -38,7 +38,7 @@ const initialNodes: Node<ComponentNodeData>[] = [
     data: {
       title: "Source",
       shape: { type: "polygon", sides: 6 },
-      outputHandles: [{ id: "a-out-1", label: "out" }],
+      outputHandles: [{ id: "a-out-1", label: "out", angle: 0 }],
       attrs: { kind: "generator" },
     },
   },
@@ -49,7 +49,7 @@ const initialNodes: Node<ComponentNodeData>[] = [
     data: {
       title: "Sink",
       shape: { type: "circle" },
-      inputHandles: [{ id: "b-in-1", label: "in" }],
+      inputHandles: [{ id: "b-in-1", label: "in", angle: 180 }],
       attrs: { kind: "consumer" },
     },
   },
@@ -76,6 +76,8 @@ export default function App() {
   const [attrValue, setAttrValue] = useState("");
   const [serverInfo, setServerInfo] = useState<string>("");
   const [showImageSearch, setShowImageSearch] = useState(false);
+  const [carrierHandleAngles, setCarrierHandleAngles] = useState<Record<string, Record<string, number>>>({});
+  const nodesRef = useRef(nodes);
 
   // Load state on first mount
   useEffect(() => {
@@ -92,12 +94,91 @@ export default function App() {
     saveState({ nodes, edges });
   }, [nodes, edges]);
 
+  // Keep nodesRef current
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
   // Fetch server info once on load
   useEffect(() => {
     fetchServerInfo()
       .then((data) => setServerInfo(JSON.stringify(data)))
       .catch(() => setServerInfo("Unavailable"));
   }, []);
+
+  // Simplified handle update functions
+  const handleHandleUpdate = useCallback((nodeId: string, handleId: string, newAngle: number) => {
+    setNodes(nodes =>
+      nodes.map(n =>
+        n.id === nodeId && n.type === 'component'
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                inputHandles: n.data.inputHandles?.map(h =>
+                  h.id === handleId ? { ...h, angle: newAngle } : h
+                ),
+                outputHandles: n.data.outputHandles?.map(h =>
+                  h.id === handleId ? { ...h, angle: newAngle } : h
+                )
+              }
+            }
+          : n
+      )
+    );
+  }, [setNodes]);
+
+  const handleNodeDragStop = useCallback((event: React.MouseEvent<HTMLDivElement>, node: Node) => {
+    const cleanedNodes = nodes.map(n => ({
+      ...n,
+      data: {}, // se limpia data
+      position: n.position ? { ...n.position } : undefined // copia defensiva de position
+    }));
+
+    // onNodesChanged?.(cleanedNodes); // Commented out as onNodesChanged is not defined
+  }, [nodes]);
+
+  const handleHandleDragStop = useCallback((nodeId: string, handleId: string, finalAngle: number) => {
+    // Actualiza la representación visual del handle
+    handleHandleUpdate(nodeId, handleId, finalAngle);
+
+    // Persiste la configuración del ángulo
+    setCarrierHandleAngles(prev => {
+      const updated = {
+        ...prev,
+        [nodeId]: {
+          ...(prev[nodeId] || {}),
+          [handleId]: finalAngle
+        }
+      };
+      // onNetConfigChange?.('initialCarrierHandleAngles', updated); // Commented out as onNetConfigChange is not defined
+      return updated;
+    });
+
+    const currentNodes = nodesRef.current; 
+    
+    const cleanedNodes = currentNodes.map(n => ({
+      ...n,
+      data: {}, // se limpia data
+      position: n.position ? { ...n.position } : undefined // copia defensiva
+    }));
+
+    // onNodesChanged?.(cleanedNodes); // Commented out as onNodesChanged is not defined
+  }, [handleHandleUpdate, setCarrierHandleAngles]);
+
+  // Add callback functions to all nodes
+  useEffect(() => {
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          onHandleUpdate: handleHandleUpdate,
+          onHandleDragStop: handleHandleDragStop,
+        },
+      }))
+    );
+  }, [handleHandleUpdate, handleHandleDragStop]);
 
   const onConnect = useCallback(
     (c: Connection) => setEdges((eds) => addEdge(c, eds)),
@@ -114,9 +195,11 @@ export default function App() {
         data: {
           title: "Node",
           shape: { type: "polygon", sides: 6 },
-          inputHandles: [{ id: id + "-in" }],
-          outputHandles: [{ id: id + "-out" }],
+          inputHandles: [{ id: id + "-in", angle: 180 }],
+          outputHandles: [{ id: id + "-out", angle: 0 }],
           attrs: {},
+          onHandleUpdate: handleHandleUpdate,
+          onHandleDragStop: handleHandleDragStop,
         },
       }),
     );
@@ -139,9 +222,11 @@ export default function App() {
             title: file.name,
             imageSrc: dataUrl,
             shape: { type: "polygon", sides: 6 },
-            inputHandles: [{ id: id + "-in" }],
-            outputHandles: [{ id: id + "-out" }],
+            inputHandles: [{ id: id + "-in", angle: 180 }],
+            outputHandles: [{ id: id + "-out", angle: 0 }],
             attrs: { file: file.name },
+            onHandleUpdate: handleHandleUpdate,
+            onHandleDragStop: handleHandleDragStop,
           },
         }),
       );
@@ -163,9 +248,11 @@ export default function App() {
           title: label,
           imageSrc: src,
           shape: { type: "polygon", sides: 6 },
-          inputHandles: [{ id: id + "-in" }],
-          outputHandles: [{ id: id + "-out" }],
+          inputHandles: [{ id: id + "-in", angle: 180 }],
+          outputHandles: [{ id: id + "-out", angle: 0 }],
           attrs: {},
+          onHandleUpdate: handleHandleUpdate,
+          onHandleDragStop: handleHandleDragStop,
         },
       }),
     );
@@ -377,7 +464,7 @@ export default function App() {
                       setNodes((nds) =>
                         nds.map((n) => {
                           if (n.id !== selectedNode.id) return n;
-                          const shape =
+                          const shape: NodeShape =
                             type === "circle"
                               ? { type: "circle" }
                               : {
@@ -462,6 +549,9 @@ export default function App() {
 
               <div className="handles">
                 <h4>Ports</h4>
+                <p style={{fontSize: '12px', color: '#666', margin: '4px 0'}}>
+                  Tip: Ctrl+click and drag handles to reposition them
+                </p>
                 <div className="row">
                   <button
                     onClick={() => {
@@ -474,7 +564,7 @@ export default function App() {
                           if (n.id !== selectedNode.id) return n;
                           const inputHandles = [
                             ...(n.data?.inputHandles || []),
-                            { id },
+                            { id, angle: 180 },
                           ];
                           return {
                             ...n,
@@ -497,7 +587,7 @@ export default function App() {
                           if (n.id !== selectedNode.id) return n;
                           const outputHandles = [
                             ...(n.data?.outputHandles || []),
-                            { id },
+                            { id, angle: 0 },
                           ];
                           return {
                             ...n,

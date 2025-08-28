@@ -4,9 +4,15 @@ export type Attrs = Record<string, string>;
 
 export type HandleInfo = {
   id: string;
+  name?: string;         // The underlying commodity or carrier name (e.g., "electricity")
+  description?: string; // Tooltip or extra info
+  factor?: number;      // e.g., commodity_factor
   angle?: number; // degrees, clockwise from +X (right)
   label?: string;
   color?: string;
+  opacity?: number;
+  side?: number;        // Default side for initial placement (0-5)
+  type?: 'source' | 'target';
 };
 
 export type NodeShape = { type: "circle" } | { type: "polygon"; sides: number };

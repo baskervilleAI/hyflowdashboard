@@ -27,6 +27,7 @@ const CarrierHandle: React.FC<CarrierHandleProps> = ({
   const handleRef = useRef<HTMLDivElement>(null);
   const nodeRef = useRef<HTMLDivElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isDragMode, setIsDragMode] = useState(false);
 
   // --- SOLUTION 1: Use refs to store mutable state ---
   const stateRef = useRef({
@@ -34,12 +35,14 @@ const CarrierHandle: React.FC<CarrierHandleProps> = ({
     lastAngle: angle,
     onUpdate,
     onDragStop,
+    isDragMode: false,
   });
 
   useEffect(() => {
     stateRef.current.onUpdate = onUpdate;
     stateRef.current.onDragStop = onDragStop;
-  }, [onUpdate, onDragStop]);
+    stateRef.current.isDragMode = isDragMode;
+  }, [onUpdate, onDragStop, isDragMode]);
 
   useEffect(() => {
     stateRef.current.lastAngle = angle;
@@ -54,6 +57,7 @@ const CarrierHandle: React.FC<CarrierHandleProps> = ({
   const handleMouseUp = useCallback(() => {
     if (stateRef.current.isDragging) {
       setIsDragging(false);
+      setIsDragMode(false);
       stateRef.current.isDragging = false;
       stateRef.current.onDragStop?.(id, stateRef.current.lastAngle);
     }
@@ -76,6 +80,9 @@ const CarrierHandle: React.FC<CarrierHandleProps> = ({
 
   const handleMouseDown = useCallback(
     (event: React.MouseEvent) => {
+      // Only allow dragging with Ctrl+click
+      if (!event.ctrlKey) return;
+      
       event.preventDefault();
       event.stopPropagation();
 
@@ -88,7 +95,9 @@ const CarrierHandle: React.FC<CarrierHandleProps> = ({
       }
 
       setIsDragging(true);
+      setIsDragMode(true);
       stateRef.current.isDragging = true;
+      stateRef.current.isDragMode = true;
 
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
@@ -110,7 +119,8 @@ const CarrierHandle: React.FC<CarrierHandleProps> = ({
       type={type}
       position={logicalPosition}
       onMouseDown={handleMouseDown}
-      title="Drag to reposition this connector"
+      title="Ctrl+click and drag to reposition this connector"
+      isConnectable={!isDragMode}
       style={{
         position: "absolute",
         left: `${position.x}px`,
@@ -120,8 +130,9 @@ const CarrierHandle: React.FC<CarrierHandleProps> = ({
         height: 7,
         backgroundColor: color,
         opacity,
-        cursor: isDragging ? "grabbing" : "move",
+        cursor: isDragging ? "grabbing" : "grab",
         zIndex: 20,
+        pointerEvents: isDragMode ? 'none' : 'auto',
       }}
     />
   );
